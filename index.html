@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productivity</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='SCSS/main.css') }}">
+    <style>
+        /* Prevent backdrop stacking - hide all but the first backdrop */
+        .modal-backdrop ~ .modal-backdrop {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 class="container my-4">Handle tasks</h1>
+    <nav aria-label="Primary" class="mb-3">
+        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active mx-2" id="records-tab" data-bs-toggle="tab" data-bs-target="#records" type="button" role="tab" aria-controls="records" aria-selected="true">Records</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks" type="button" role="tab" aria-controls="tasks" aria-selected="false">Tasks</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="false">Daily</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="files-tab" data-bs-toggle="tab" data-bs-target="#files" type="button" role="tab" aria-controls="files" aria-selected="false">Files</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="crm-tab" data-bs-toggle="tab" data-bs-target="#crm" type="button" role="tab" aria-controls="crm" aria-selected="false">CRM</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="dashboard-tab"><a href="/dashboard">Dashboard</a></button>
+            </li>
+        </ul>
+    </nav>
+    <div class="tab-content" id="mainTabsContent">
+    <section id="records" class="tab-pane fade show active px-3" role="tabpanel" aria-labelledby="records-tab">
+        <h2 id="records-heading">Records</h2>
+        <div class="mb-3 d-flex gap-2">
+            <button id="btn-load-sessions" type="button" class="btn btn-primary">Load Unreviewed Sessions</button>
+            <button id="btn-add-review" type="button" class="btn btn-info">Add Review Time</button>
+        </div>
+        <div class="container">
+            <form id="assignTasksForm" method="post" action="{{ url_for('submit_sessions') }}">
+                <div class="table-responsive">
+                <table id="records-table" class="table table-striped table-hover table-sm align-middle" aria-label="Productivity records">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Select</th>
+                            <th scope="col">Start</th>
+                            <th scope="col">Finish</th>
+                            <th scope="col">Hours</th>
+                            <th scope="col">Session ID</th>
+                            <th scope="col">Reviewed</th>
+                            <th scope="col">Task</th>
+                            <th scope="col">Effort</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="records-tbody"></tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="9" class="text-end">
+                                <button type="submit" class="btn btn-primary">Submit selected to Server</button>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+                </div>
+            </form>
+
+        </div>
+    </section>
+    <section id="tasks" class="tab-pane fade px-3" role="tabpanel" aria-labelledby="tasks-tab">
+        <h2 id="tasks-heading">Tasks</h2>
+        <div class="mb-3 d-flex gap-2">
+            <button id="btn-load-tasks" type="button" class="btn btn-primary">Load Tasks</button>
+        </div>
+        <div class="container">
+            <form id="addTaskForm" method="post" action="{{ url_for('submit_sessions') }}">
+                <fieldset class="border p-3 rounded">
+                    <legend>Add a new task</legend>
+                    <div class="mb-3">
+                        <label for="task-name">Task name</label>
+                        <input type="text" class="form-control" id="task-name" name="task[name]" placeholder="e.g., Prepare report" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Categories</label>
+                        <div id="categories-container" class="d-flex flex-wrap gap-3">
+                            <!-- Categories will be loaded dynamically -->
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="task-due">Due date</label>
+                        <input type="date" class="form-control" id="task-due" name="task[due]">
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary">Save task</button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!-- Open Tasks Section -->
+            <div class="mt-3">
+                <h4>Open Tasks</h4>
+                <div class="table-responsive">
+                    <table id="open-tasks-table" class="table table-striped table-hover table-sm align-middle" aria-label="Open task list">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" style="width: 40px;"></th>
+                            <th scope="col" style="width: 40px;"></th>
+                            <th scope="col">Task</th>
+                            <th scope="col">Categories</th>
+                            <th scope="col">Due</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="open-tasks-tbody"></tbody>
+                </table>
+                </div>
+            </div>
+
+            <!-- Completed Tasks Accordion -->
+            <div class="mt-4">
+                <div class="accordion" id="completedTasksAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="completedTasksHeader">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#completedTasksCollapse" aria-expanded="false" aria-controls="completedTasksCollapse">
+                                <span id="completed-tasks-count">Completed Tasks (0)</span>
+                            </button>
+                        </h2>
+                        <div id="completedTasksCollapse" class="accordion-collapse collapse" aria-labelledby="completedTasksHeader" data-bs-parent="#completedTasksAccordion">
+                            <div class="accordion-body">
+                                <div class="table-responsive">
+                                    <table id="completed-tasks-table" class="table table-striped table-hover table-sm align-middle" aria-label="Completed task list">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th scope="col" style="width: 40px;"></th>
+                                            <th scope="col" style="width: 40px;"></th>
+                                            <th scope="col">Task</th>
+                                            <th scope="col">Categories</th>
+                                            <th scope="col">Due</th>
+                                            <th scope="col">Completed</th>
+                                            <th scope="col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="completed-tasks-tbody"></tbody>
+                                </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Abandoned Tasks Accordion -->
+            <div class="mt-4">
+                <div class="accordion" id="abandonedTasksAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="abandonedTasksHeader">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#abandonedTasksCollapse" aria-expanded="false" aria-controls="abandonedTasksCollapse">
+                                <span id="abandoned-tasks-count">Abandoned Tasks (0)</span>
+                            </button>
+                        </h2>
+                        <div id="abandonedTasksCollapse" class="accordion-collapse collapse" aria-labelledby="abandonedTasksHeader" data-bs-parent="#abandonedTasksAccordion">
+                            <div class="accordion-body">
+                                <div class="table-responsive">
+                                    <table id="abandoned-tasks-table" class="table table-striped table-hover table-sm align-middle" aria-label="Abandoned task list">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th scope="col" style="width: 40px;"></th>
+                                            <th scope="col" style="width: 40px;"></th>
+                                            <th scope="col">Task</th>
+                                            <th scope="col">Categories</th>
+                                            <th scope="col">Due</th>
+                                            <th scope="col">Abandoned</th>
+                                            <th scope="col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="abandoned-tasks-tbody"></tbody>
+                                </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section id="daily" class="tab-pane fade px-3" role="tabpanel" aria-labelledby="daily-tab">
+        <h2 id="daily-heading">Daily</h2>
+        <div class="mb-3 d-flex gap-2">
+            <button id="btn-load-daily" type="button" class="btn btn-primary">Load Daily Entries</button>
+        </div>
+        <div id="reward-status-container" class="mb-3">
+            <!-- Reward ban status and info will be displayed here -->
+        </div>
+        <div class="container">
+            <div id="daily-entries-container">
+                <!-- Daily entries rows will be loaded here -->
+            </div>
+        </div>
+        <div class="container">
+            <div class="mt-3">
+                <label for="daily-plan-textarea" class="form-label">Daily Plan</label>
+                <textarea id="daily-plan-textarea" class="form-control" rows="10" style="resize: vertical;"></textarea>
+                <div class="mt-2">
+                    <button id="btn-save-daily-plan" type="button" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section id="files" class="tab-pane fade px-3" role="tabpanel" aria-labelledby="files-tab">
+        <h2 id="files-heading">File Management</h2>
+        <div class="mb-3 d-flex gap-2">
+            <button id="btn-load-files" type="button" class="btn btn-primary">Load Files</button>
+        </div>
+        <div class="container">
+            <div class="table-responsive">
+                <table id="files-table" class="table table-striped table-hover table-sm align-middle" aria-label="File management">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">File Name</th>
+                            <th scope="col">File Path</th>
+                            <th scope="col">Tasks</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="files-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    <section id="crm" class="tab-pane fade px-3" role="tabpanel" aria-labelledby="crm-tab">
+        <h2 id="crm-heading">CRM</h2>
+        <div class="mb-3 d-flex gap-2">
+            <button id="btn-load-contacts" type="button" class="btn btn-primary">Load Contacts</button>
+            <button id="btn-add-contact" type="button" class="btn btn-success">Add Contact</button>
+        </div>
+        <div class="container">
+            <div class="table-responsive">
+                <table id="contacts-table" class="table table-striped table-hover table-sm align-middle" aria-label="CRM contacts">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Company</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Phone</th>
+                            <th scope="col">Source</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contacts-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    </div>
+
+
+    <!-- Add Review Time Modal -->
+    <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reviewModalLabel">Add Review Time</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="reviewForm">
+                        <div class="mb-3">
+                            <label for="reviewDuration" class="form-label">Review Duration (minutes)</label>
+                            <input type="number" class="form-control" id="reviewDuration" min="1" max="480" step="1" required>
+                            <div class="form-text">Enter how many minutes you spent on review (1-480 minutes).</div>
+                        </div>
+                        <div class="alert alert-info">
+                            <strong>Session Details:</strong>
+                            <div id="reviewPreview"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmReview">Add Review Session</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div class="modal fade" id="editTaskModal" tabindex="-1" aria-labelledby="editTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editTaskModalLabel">Edit Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editTaskForm">
+                        <div class="mb-3">
+                            <label for="editTaskName" class="form-label">Task Name</label>
+                            <input type="text" class="form-control" id="editTaskName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Categories</label>
+                            <div id="editCategoriesContainer" class="d-flex flex-wrap gap-3">
+                                <!-- Categories will be loaded dynamically -->
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editTaskDue" class="form-label">Due Date</label>
+                            <input type="date" class="form-control" id="editTaskDue">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmEditTask">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Details Modal -->
+    <div class="modal fade" id="taskDetailsModal" tabindex="-1" aria-labelledby="taskDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="taskDetailsModalLabel">Task Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="taskDetailsContent">
+                        <h6 id="taskDetailsName" class="mb-3"></h6>
+                        
+                        <!-- Subtasks Section -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Subtasks</h6>
+                                <button type="button" class="btn btn-sm btn-primary" id="btnAddSubtask">
+                                    <i class="bi bi-plus"></i> Add Subtask
+                                </button>
+                            </div>
+                            <div id="subtasksList" class="list-group mb-3">
+                                <!-- Subtasks will be loaded dynamically -->
+                            </div>
+                            <div id="addSubtaskForm" class="d-none mb-3">
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control" id="newSubtaskName" placeholder="Enter subtask name(s)">
+                                    <button type="button" class="btn btn-success" id="btnSaveSubtask">
+                                        <i class="bi bi-check"></i> Save
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="btnCancelSubtask">
+                                        <i class="bi bi-x"></i> Cancel
+                                    </button>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle"></i> Tip: Separate multiple subtasks with commas to create them all at once (e.g., "Subtask 1, Subtask 2, Subtask 3")
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Files Section -->
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6>Associated Files</h6>
+                                <button type="button" class="btn btn-sm btn-primary" id="btnAddFile">
+                                    <i class="bi bi-plus"></i> Add File
+                                </button>
+                            </div>
+                            <div id="filesList" class="list-group mb-3">
+                                <!-- Files will be loaded dynamically -->
+                            </div>
+                            <div id="addFileForm" class="d-none mb-3">
+                                <div class="mb-2">
+                                    <label for="existingFileSelect" class="form-label small">Select Existing File (Optional)</label>
+                                    <select class="form-select" id="existingFileSelect">
+                                        <option value="">-- Select an existing file or enter new file below --</option>
+                                    </select>
+                                    <small class="text-muted">Or enter a new file name and path below</small>
+                                </div>
+                                <div class="mb-2">
+                                    <label for="newFileName" class="form-label small">File Name</label>
+                                    <input type="text" class="form-control" id="newFileName" placeholder="Enter file name">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="newFilePath" class="form-label small">File Path / Link</label>
+                                    <input type="text" class="form-control" id="newFilePath" placeholder="Paste file path or URL here">
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-success" id="btnSaveFile">
+                                        <i class="bi bi-check"></i> Save
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="btnCancelFile">
+                                        <i class="bi bi-x"></i> Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
+        <div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto" id="toast-title">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="toast-message">
+                <!-- Toast message will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Contact Modal -->
+    <div class="modal fade" id="addContactModal" tabindex="-1" aria-labelledby="addContactModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addContactModalLabel">Add New Contact</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addContactForm">
+                        <div class="mb-3">
+                            <label for="addContactName" class="form-label">Name *</label>
+                            <input type="text" class="form-control" id="addContactName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addContactCompany" class="form-label">Company</label>
+                            <input type="text" class="form-control" id="addContactCompany">
+                        </div>
+                        <div class="mb-3">
+                            <label for="addContactEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="addContactEmail">
+                        </div>
+                        <div class="mb-3">
+                            <label for="addContactPhone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="addContactPhone">
+                        </div>
+                        <div class="mb-3">
+                            <label for="addContactSource" class="form-label">Source</label>
+                            <select class="form-select" id="addContactSource">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addContactStatus" class="form-label">Status</label>
+                            <select class="form-select" id="addContactStatus">
+                                <option value="lead">Lead</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addContactType" class="form-label">Type</label>
+                            <select class="form-select" id="addContactType">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveContactBtn">Save Contact</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Contact Modal -->
+    <div class="modal fade" id="editContactModal" tabindex="-1" aria-labelledby="editContactModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editContactModalLabel">Edit Contact</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editContactForm">
+                        <input type="hidden" id="editContactId">
+                        <div class="mb-3">
+                            <label for="editContactName" class="form-label">Name *</label>
+                            <input type="text" class="form-control" id="editContactName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactCompany" class="form-label">Company</label>
+                            <input type="text" class="form-control" id="editContactCompany">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="editContactEmail">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactPhone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="editContactPhone">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactSource" class="form-label">Source</label>
+                            <select class="form-select" id="editContactSource">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactStatus" class="form-label">Status</label>
+                            <select class="form-select" id="editContactStatus">
+                                <option value="lead">Lead</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactType" class="form-label">Type</label>
+                            <select class="form-select" id="editContactType">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="updateContactBtn">Update Contact</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Details Modal -->
+    <div class="modal fade" id="contactDetailsModal" tabindex="-1" aria-labelledby="contactDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="contactDetailsModalLabel">Contact Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <h6>Contact Information</h6>
+                        <table class="table table-sm">
+                            <tr><th>Name:</th><td id="contactDetailsName"></td></tr>
+                            <tr><th>Company:</th><td id="contactDetailsCompany"></td></tr>
+                            <tr><th>Email:</th><td id="contactDetailsEmail"></td></tr>
+                            <tr><th>Phone:</th><td id="contactDetailsPhone"></td></tr>
+                            <tr><th>Source:</th><td id="contactDetailsSource"></td></tr>
+                            <tr><th>Status:</th><td id="contactDetailsStatus"></td></tr>
+                            <tr><th>Type:</th><td id="contactDetailsType"></td></tr>
+                        </table>
+                    </div>
+                    
+                    <!-- Interactions Section -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6>Interactions</h6>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="window.crmModule.addInteraction()">
+                                <i class="bi bi-plus"></i> Add Interaction
+                            </button>
+                        </div>
+                        <div id="interactionsList" class="list-group">
+                            <!-- Interactions will be loaded dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Deals Section -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6>Deals</h6>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="window.crmModule.addDeal()">
+                                <i class="bi bi-plus"></i> Add Deal
+                            </button>
+                        </div>
+                        <div id="dealsList" class="list-group">
+                            <!-- Deals will be loaded dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Tasks Section -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6>Tasks</h6>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="window.crmModule.addTask()">
+                                <i class="bi bi-plus"></i> Add Task
+                            </button>
+                        </div>
+                        <div id="crmTasksList" class="list-group">
+                            <!-- Tasks will be loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Interaction Modal -->
+    <div class="modal fade" id="addInteractionModal" tabindex="-1" aria-labelledby="addInteractionModalLabel" aria-hidden="true" data-bs-backdrop="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addInteractionModalLabel">Add Interaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addInteractionForm">
+                        <div class="mb-3">
+                            <label for="addInteractionType" class="form-label">Interaction Type *</label>
+                            <select class="form-select" id="addInteractionType" required>
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addInteractionContent" class="form-label">Content/Notes</label>
+                            <textarea class="form-control" id="addInteractionContent" rows="4"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveInteractionBtn">Save Interaction</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Deal Modal -->
+    <div class="modal fade" id="addDealModal" tabindex="-1" aria-labelledby="addDealModalLabel" aria-hidden="true" data-bs-backdrop="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addDealModalLabel">Add Deal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addDealForm">
+                        <div class="mb-3">
+                            <label for="addDealTitle" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="addDealTitle">
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDealValue" class="form-label">Value (CAD)</label>
+                            <input type="number" class="form-control" id="addDealValue" step="0.01" min="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDealStage" class="form-label">Stage</label>
+                            <select class="form-select" id="addDealStage">
+                                <option value="new">New</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveDealBtn">Save Deal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Deal Modal -->
+    <div class="modal fade" id="editDealModal" tabindex="-1" aria-labelledby="editDealModalLabel" aria-hidden="true" data-bs-backdrop="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editDealModalLabel">Edit Deal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editDealForm">
+                        <input type="hidden" id="editDealId">
+                        <div class="mb-3">
+                            <label for="editDealTitle" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="editDealTitle">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDealValue" class="form-label">Value (CAD)</label>
+                            <input type="number" class="form-control" id="editDealValue" step="0.01" min="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDealStage" class="form-label">Stage</label>
+                            <select class="form-select" id="editDealStage">
+                                <option value="new">New</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="updateDealBtn">Update Deal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true" data-bs-backdrop="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addTaskModalLabel">Add Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addTaskForm">
+                        <div class="mb-3">
+                            <label for="addTaskTitle" class="form-label">Title *</label>
+                            <input type="text" class="form-control" id="addTaskTitle" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addTaskDueDate" class="form-label">Due Date</label>
+                            <input type="date" class="form-control" id="addTaskDueDate">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveTaskBtn">Save Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+
+</html>
